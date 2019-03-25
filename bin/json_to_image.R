@@ -42,7 +42,7 @@ image_fmt <- args[["image-format"]]
 image_ext <- paste0(".", tolower(image_fmt))
 
 
-## ---- Провекра аргументов ----
+## ---- Проверка аргументов ----
 
 if (!dir.exists(out_dir)) {
   message("Create ", shQuote(out_dir), " directory")
