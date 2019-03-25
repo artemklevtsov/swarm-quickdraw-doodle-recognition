@@ -76,8 +76,8 @@ cv::Mat ocv_draw_lines(const strokes& x, bool color = true) {
         // Количество точек
         size_t n_points = s.shape()[1];
         for (size_t i = 0; i < n_points - 1; ++i) {
-            cv::Point from(s(0, i), s(1, i));
-            cv::Point to(s(0, i + 1), s(1, i + 1));
+            cv::Point from(SIZE - s(0, i), s(1, i));
+            cv::Point to(SIZE - s(0, i + 1), s(1, i + 1));
             cv::line(img, from, to, col, LINE_WIDTH, LINE_TYPE);
         }
         if (color) {
