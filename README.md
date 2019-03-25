@@ -18,6 +18,29 @@
 docker build --tag doodles-tf .
 ```
 
+### Параметры и ФС
+
+Выполнить в терминале (bash):
+
+```bash
+# Директории
+DATA_DIR="${PWD}/data"
+DB_DIR="${PWD}/db"
+LOGS_DIR="${PWD}/logs"
+MODELS_DIR="${PWD}/odels"
+
+# Параметры скриптов
+SCLAE=0.5
+BATCH_SIZE=32
+NN_MODEL="mobilenet_v2"
+
+# Создаём необходимые директории
+mkdir -p "${DATA_DIR}"
+mkdir -p "${DB_DIR}"
+mkdir -p "${LOGS_DIR}"
+mkdir -p "${MODELS_DIR}"
+```
+
 ### Получение данных
 
 Войдите в свой аккаунт Kaggle в раздел API и сгенерируйте новый токен (кнопка «Create New API Token»). Полученный файл разместите в корень репозитория или в `${HOME}/.kaggle/kaggle.json`.
@@ -27,8 +50,6 @@ docker build --tag doodles-tf .
 ```bash
 KAGGLE_CREDS="${HOME}/.kaggle/kaggle.json"
 CMD="./fetch_data.R -o /data -c /kaggle.json"
-DATA_DIR="${PWD}/data"
-mkdir -p "${DATA_DIR}"
 docker run --rm \
            -v "${KAGGLE_CREDS}:/kaggle.json" \
            -v "${DATA_DIR}:/data" \
@@ -42,9 +63,7 @@ docker run --rm \
 Выполните команду:
 
 ```bash
-DB_DIR="${PWD}/db"
 CMD="./upload_data.R -i /data/train_simplified.zip -d /db"
-mkdir -p "${DB_DIR}"
 docker run --rm \
            -v "${DATA_DIR}:/data" \
            -v "${DB_DIR}:/db" \
@@ -58,16 +77,11 @@ docker run --rm \
 Пример кода обучения модели:
 
 ```bash
-mkdir -p logs
-mkdir -p models
-SCLAE=0.5
-BATCH_SIZE=32
-NN_MODEL="mobilenet_v2"
 CMD="./train_nn.R -m ${NN_MODEL} -b ${BATCH_SIZE} -c -s ${SCLAE} -d /app/db"
 docker run --runtime=nvidia --rm \
            -v "${DB_DIR}:/app/db" \
-           -v "${PWD}/logs:/app/logs" \
-           -v "${PWD}/models:/app/models" \
+           -v "${LOGS_DIR}:/app/logs" \
+           -v "${MODELS_DIR}:/app/models" \
            doodles-tf ${CMD}
 ```
 
@@ -78,9 +92,7 @@ docker run --runtime=nvidia --rm \
 Пример кода для получения предсказаний:
 
 ```bash
-SCLAE=0.5
-BATCH_SIZE=32
-MODEL_FILE="${PWD}/models/mobilenet_v2_128_3ch_08_2.26.h5"
+MODEL_FILE="${MODELS_DIR}/mobilenet_v2_128_3ch_08_2.26.h5"
 CMD="./predict.R -m /app/submit.h5 -b ${BATCH_SIZE} -c -s ${SCLAE} -d /app/db -o /app/data"
 docker run --runtime=nvidia --rm \
            -v "${DB_DIR}:/app/db" \
