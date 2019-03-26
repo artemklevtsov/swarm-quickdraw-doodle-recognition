@@ -1,8 +1,5 @@
 #!/usr/bin/env Rscript
 
-
-#!/usr/bin/env Rscript
-
 ## ---- Парсинг аргументов командной строки ----
 
 doc <- '
