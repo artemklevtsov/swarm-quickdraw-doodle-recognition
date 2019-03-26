@@ -91,19 +91,56 @@ if (!DBI::dbExistsTable(con, "doodles")) {
 
 ## ---- Функции для работы с ФС и БД ----
 
-# Извлечение и загрузка файла
-upload_file <- function(con, tablename, zipfile, filename) {
+#' @title Извлечение и загрузка файлов
+#'
+#' @description
+#' Извлечение CSV-файлов из ZIP-архива и загрузка их в базу данных
+#'
+#' @param con Объект подключения к базе данных (класс `MonetDBEmbeddedConnection`).
+#' @param tablename Название таблицы в базе данных.
+#' @oaram zipfile Путь к ZIP-архиву.
+#' @oaram filename Имя файла внури ZIP-архива.
+#' @param preprocess Функция предобработки, которая будет применена извлечённому файлу.
+#'   Должна принимать один аргумент `data` (объект `data.table`).
+#'
+#' @return `TRUE`.
+#'
+upload_file <- function(con, tablename, zipfile, filename, preprocess = NULL) {
+  # Проверка аргументов
   checkmate::assert_class(con, "MonetDBEmbeddedConnection")
   checkmate::assert_string(tablename)
   checkmate::assert_string(filename)
   checkmate::assert_true(DBI::dbExistsTable(con, tablename))
   checkmate::assert_file_exists(zipfile, access = "r", extension = "zip")
 
+  # Извлечение файла
   path <- file.path(tempdir(), filename)
   unzip(zipfile, files = filename, exdir = tempdir(), junkpaths = TRUE, unzip = getOption("unzip"))
   on.exit(unlink(file.path(path)))
-  sql <- sprintf("COPY OFFSET 2 INTO %s FROM '%s' USING DELIMITERS ',','\\n','\"' NULL AS '' BEST EFFORT", tablename, path)
+
+  # Применяем функция предобработки
+  if (!is.null(preprocess)) {
+    .data <- data.table::fread(file = path)
+    .data <- preprocess(data = .data)
+    data.table::fwrite(
+      x = .data,
+      file = path,
+      sep = ",",
+      eol = "\n",
+      logical01 = TRUE,
+      append = FALSE
+    )
+    rm(.data)
+  }
+
+  # Запрос к БД на импорт CSV
+  sql <- sprintf(
+    "COPY OFFSET 2 INTO %s FROM '%s' USING DELIMITERS ',','\\n','\"' NULL AS '' LOCKED BEST EFFORT",
+    tablename, path
+  )
+  # Выполнение запроса к БД
   DBI::dbExecute(con, sql)
+  # Добавление записи об успешной загрузке в служебную таблицу
   DBI::dbExecute(con, sprintf("INSERT INTO upload_log(file_name, uploaded) VALUES('%s', true)", filename))
   invisible(TRUE)
 }
